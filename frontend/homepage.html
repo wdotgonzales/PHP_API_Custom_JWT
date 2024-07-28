@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <h1>Homepage</h1>
+    <button id="logoutButton">Logout</button>
+
+    <div style="display: flex; gap: 10em;">
+        <div>
+            <h3>List of Task : </h3>
+            <ul id="listOfTask">
+
+            </ul>
+        </div>
+        <div>
+            <form id="createTaskForm">
+                <h3>Create a Task</h3>
+                <label for="create_name">Name:</label>
+                <input type="text" name="create_name" id="name">
+
+                <br><br>
+
+                <label for="create_description">Description:</label>
+                <br>
+                <textarea name="create_description" cols="27" rows="5"></textarea>
+
+                <br>
+                <label for="create_status">Status:</label>
+                <br>
+
+                <select name="create_status" id="">
+                    <option value="1" selected="selected">Completed</option>
+                    <option value="0">Not Completed</option>
+                </select>
+                <br> <br>
+                <button type="submit">Add Task</button>
+                <br><br><br>
+            </form>
+
+
+            <h3>Chosen Task Information :</h3>
+            <label for="name">Name:</label>
+            <input type="text" name="name" id="name">
+
+            <br><br>
+
+            <label for="description">Description:</label>
+            <br>
+            <textarea name="description" cols="27" rows="5"></textarea>
+
+            <br>
+            <label for="status">Status:</label>
+            <br>
+
+            <select name="status" id="">
+                <option value="1">Completed</option>
+                <option value="0">Not Completed</option>
+            </select>
+
+            <br><br>
+
+            <button id="deleteTaskBtn">Delete</button>
+            <button id="updateTasksBtn">Update</button>
+        </div>
+    </div>
+</body>
+
+<script>
+    $(document).ready(function () {
+        // Variable to store the ID of the chosen task
+        let chosenTaskId = null;
+
+        // Event listener for clicking on a task from the list
+        $('#listOfTask').on('click', '#tasksAvailable', function () {
+            const taskId = $(this).attr('task-id');  // Get the task ID from the clicked element
+            getATask(taskId);  // Fetch the details of the selected task
+            chosenTaskId = taskId;  // Store the selected task ID
+        });
+
+        // Initial checks and data fetch
+        checkTokenExist();  // Check if the tokens exist in local storage
+        getAllTask();  // Fetch and display all tasks
+
+        // Event listener for form submission to create a new task
+        $('#createTaskForm').on('submit', (e) => {
+            e.preventDefault();  // Prevent the default form submission behavior
+            // Check if the necessary fields are filled out
+            if ($('textarea[name="create_name"]').val() === '' || $('textarea[name="create_description"]').val() === '') {
+                alert('Please fill out needed information about the task.');
+                return;
+            }
+            createATask();  // Call the function to create a new task
+        });
+
+        // Event listener for updating a task
+        $('#updateTasksBtn').on('click', () => {
+            if (chosenTaskId === null) {  // Check if a task is selected
+                alert('Choose a task first in the list.');
+                return;
+            }
+            updateATask(chosenTaskId);  // Call the function to update the selected task
+        });
+
+        // Event listener for deleting a task
+        $('#deleteTaskBtn').on('click', () => {
+            if (chosenTaskId === null) {  // Check if a task is selected
+                alert('Choose a task first in the list.');
+                return;
+            }
+            deleteATask(chosenTaskId);  // Call the function to delete the selected task
+            chosenTaskId = null;  // Reset the chosenTaskId
+        });
+
+        // Event listener for logout
+        $('#logoutButton').on('click', () => {
+            logout();  // Call the function to log out the user
+        });
+
+        // Function to fetch and display all tasks
+        function getAllTask() {
+            $.ajax({
+                type: 'GET',
+                url: 'http://localhost/REST/api/tasks',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')  // Include the access token in the request header
+                },
+                success: function (response, xhr) {
+                    const data = JSON.parse(response);  // Parse the JSON response
+                    // Generate HTML for the task list
+                    const titles = data.map((title) => {
+                        return `<li id="tasksAvailable" task-id="${title.id}" style="cursor:pointer;">${title.name}</li>`;
+                    }).join("");
+
+                    $('#listOfTask').html(titles);  // Insert the task list into the DOM
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);  // Log the error to the console
+                    refreshAccessToken(getAllTask);  // Refresh the access token and retry the request
+                }
+            });
+        }
+
+        // Function to fetch and display details of a specific task
+        function getATask(taskID) {
+            $.ajax({
+                type: 'GET',
+                url: `http://localhost/REST/api/tasks/${taskID}`,
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')  // Include the access token in the request header
+                },
+                success: function (response, xhr) {
+                    const { name, description, is_completed } = JSON.parse(response)[0];  // Parse the JSON response
+
+                    // Populate the form fields with the task details
+                    $('input[name="name"]').val(name);
+                    $('textarea[name="description"]').val(description);
+                    $('select[name="status"]').val(`${is_completed == 1 ? '1' : '0'}`);
+
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);  // Log the error to the console
+                    refreshAccessToken(() => getATask(taskID));  // Refresh the access token and retry the request
+                }
+            });
+        }
+
+        // Function to update a specific task
+        function updateATask(taskID) {
+            $.ajax({
+                type: 'PATCH',
+                url: `http://localhost/REST/api/tasks/${taskID}`,
+                data: JSON.stringify({
+                    name: $('input[name="name"]').val(),  // Get the updated task name from the input field
+                    description: $('textarea[name="description"]').val(),  // Get the updated task description from the textarea
+                    is_completed: $('select[name="status"]').val()  // Get the updated task status from the select dropdown
+                }),
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')  // Include the access token in the request header
+                },
+                success: function (response, xhr) {
+                    getAllTask();  // Refresh the task list
+                    getATask(taskID);  // Refresh the task details
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);  // Log the error to the console
+                    refreshAccessToken(() => updateATask(taskID));  // Refresh the access token and retry the request
+                }
+            });
+        }
+
+        // Function to create a new task
+        function createATask() {
+            $.ajax({
+                type: 'POST',
+                url: `http://localhost/REST/api/tasks`,
+                data: JSON.stringify({
+                    name: $('input[name="create_name"]').val(),  // Get the new task name from the input field
+                    description: $('textarea[name="create_description"]').val(),  // Get the new task description from the textarea
+                    is_completed: $('select[name="create_status"]').val(),  // Get the new task status from the select dropdown
+                }),
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')  // Include the access token in the request header
+                },
+                success: function (response, xhr) {
+                    getAllTask();  // Refresh the task list
+                    // Clear the form fields
+                    $('input[name="create_name"]').val('');
+                    $('textarea[name="create_description"]').val('');
+                    $('select[name="create_status"]').val('');
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);  // Log the error to the console
+                    refreshAccessToken(createATask);  // Refresh the access token and retry the request
+                }
+            });
+        }
+
+        // Function to delete a specific task
+        function deleteATask(taskID) {
+            $.ajax({
+                type: 'DELETE',
+                url: `http://localhost/REST/api/tasks/${taskID}`,
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')  // Include the access token in the request header
+                },
+                success: function (response, xhr) {
+                    getAllTask();  // Refresh the task list
+                    // Clear the form fields
+                    $('input[name="name"]').val('');
+                    $('textarea[name="description"]').val('');
+                    $('select[name="status"]').val('');
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);  // Log the error to the console
+                    refreshAccessToken(() => deleteATask(taskID));  // Refresh the access token and retry the request
+                }
+            });
+        }
+
+        // Function to log out the user
+        function logout() {
+            $.ajax({
+                type: 'POST',
+                url: 'http://localhost/REST/api/logout.php',
+                data: JSON.stringify({
+                    token: localStorage.getItem("refresh_token")  // Include the refresh token in the request body
+                }),
+                dataType: 'json',
+                success: function (response, textStatus, xhr) {
+                    console.log(xhr.status);  // Log the status of the response
+                    console.log(response);  // Log the response data
+                },
+                error: function (xhr, status, error) {
+                    console.log(xhr.status);  // Log the status of the error response
+                    console.log(error);  // Log the error message
+                },
+                complete: function () {
+                    // Remove tokens from local storage and redirect to the login page
+                    localStorage.removeItem("access_token");
+                    localStorage.removeItem("refresh_token");
+                    checkTokenExist();
+                }
+            });
+        }
+
+        // Function to check if tokens exist, redirect if not
+        function checkTokenExist() {
+            // If no tokens are found, redirect to the login page
+            if (localStorage.getItem('access_token') === null && localStorage.getItem('refresh_token') === null) {
+                window.location.href = "index.html";
+                return;
+            }
+        }
+
+        // Function to refresh the access token
+        function refreshAccessToken(callbackFunction) {
+            $.ajax({
+                type: "POST",
+                url: "http://localhost/REST/api/refresh.php",
+                data: JSON.stringify({
+                    token: localStorage.getItem("refresh_token")  // Include the refresh token in the request body
+                }),
+                success: function (response, xhr) {
+                    const { new_access_token } = response;  // Extract the new access token from the response
+                    localStorage.setItem('access_token', new_access_token);  // Update the access token in local storage
+                    callbackFunction();  // Retry the original function call
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);  // Log the error to the console
+                }
+            });
+        }
+    });
+</script>
+
+</html>

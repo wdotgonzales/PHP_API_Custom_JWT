@@ -1,0 +1,7 @@
+# In simpler terms, this code makes sure that any URL that doesn't point to an actual file, directory, or link is redirected to index.php. This way, index.php can handle all routing logic, which is useful for applications with custom routing requirements or single-page applications.
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-l
+RewriteRule . index.php [L]

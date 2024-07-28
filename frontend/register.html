@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register page</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <h1>Register</h1>
+    <form id="registerForm">
+        <label for="name">Name:</label>
+        <br>
+        <input type="text" name="name">
+
+        <br>
+
+        <label for="username">Username:</label>
+        <br>
+        <input type="text" name="username">
+
+        <br>
+
+        <label for="password">Password:</label>
+        <br>
+        <input type="password" name="password">
+
+        <br>
+        <br>
+
+        <button>Register</button>
+
+        <div class="message"></div>
+
+        <p>Already have an account?</p>
+        <a href="http://localhost/rest/frontend/">Click here</a>
+    </form>
+
+    <script>
+        $(document).ready(function () {
+
+            if (localStorage.getItem('access_token') !== null && localStorage.getItem('refresh_token') !== null) {
+                window.location.href = "homepage.html";
+                return;
+            }
+
+            $('#registerForm').on('submit', function (event) {
+                event.preventDefault();
+
+                const formData = JSON.stringify(
+                    {
+                        name: $('[name="name"]').val(),
+                        username: $('[name="username"]').val(),
+                        password: $('[name="password"]').val()
+                    }
+                );
+
+
+                $.ajax({
+                    type: 'POST',
+                    url: 'http://localhost/REST/register.php',
+                    data: formData,
+                    dataType: 'json',
+                    success: function (response, textStatus, xhr) {
+                        if (xhr.status == 200) {
+                            $('.message').html('<p style="color:green;">Registered Successfully</p>');
+                            $('[name="name"]').val('');
+                            $('[name="username"]').val('');
+                            $('[name="password"]').val('');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.log(error)
+                    }
+                });
+
+            })
+        });
+    </script>
+</body>
+
+</html>

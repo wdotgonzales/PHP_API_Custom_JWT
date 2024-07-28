@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login page</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+        integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <h1>Login</h1>
+    <form action="" id="loginForm">
+        <label for="username">Username:</label>
+        <br>
+        <input type="text" name="username">
+
+        <br>
+
+        <label for="password">Password:</label>
+        <br>
+        <input type="password" name="password">
+
+        <br>
+        <br>
+
+        <button>Login</button>
+
+        <div id="messageError"></div>
+
+        <p>No Account Yet?</p>
+        <a href="register.html">Click here</a>
+    </form>
+
+    <script>
+        $(document).ready(function () {
+            checkTokenExist();
+
+
+            $('#loginForm').on('submit', (event) => {
+                event.preventDefault();
+                login();
+            })
+
+            function checkTokenExist() {
+                if (localStorage.getItem('access_token') !== null && localStorage.getItem('refresh_token') !== null) {
+                    window.location.href = "homepage.html";
+                }
+            }
+
+            function login() {
+                const formData = JSON.stringify(
+                    {
+                        username: $('[name="username"]').val(),
+                        password: $('[name="password"]').val()
+                    }
+                );
+
+                $.ajax({
+                    type: 'POST',
+                    url: 'http://localhost/REST/login.php',
+                    data: formData,
+                    dataType: 'json',
+                    success: function (response, textStatus, xhr) {
+                        if (xhr.status == 200) {
+                            const { access_token, refresh_token } = response;
+
+                            localStorage.setItem('access_token', access_token);
+                            localStorage.setItem('refresh_token', refresh_token);
+
+                            window.location.href = "homepage.html";
+
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        let jsonResponse = JSON.parse(xhr.responseText);
+                        $('#messageError').html(`<p style="color:red">${jsonResponse.message}</p>`);
+                        console.log(xhr.status);
+                    }
+                });
+            }
+        })
+    </script>
+</body>
+
+</html>
